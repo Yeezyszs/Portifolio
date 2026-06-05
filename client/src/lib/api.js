@@ -1,6 +1,9 @@
 import { supabase } from './supabaseClient.js';
 
-const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3333';
+// Vazio por padrão => chamadas relativas (/api/...) que passam pelo proxy do
+// Vite em desenvolvimento. Em produção (front e back separados), defina
+// VITE_API_URL com a URL pública absoluta da API.
+const BASE = import.meta.env.VITE_API_URL ?? '';
 
 // Wrapper de fetch que injeta o Bearer token automaticamente quando há sessão
 // e normaliza erros da API para um Error com mensagem legível.
