@@ -12,6 +12,22 @@ export function DashboardHome() {
     return <Spinner />;
   }
 
+  // Se a API falhou, mostra o erro real em vez de quebrar a tela.
+  if (profileQuery.isError || !profileQuery.data) {
+    return (
+      <Card>
+        <h1 className="text-lg font-semibold mb-2">Não foi possível carregar seu perfil</h1>
+        <p className="text-sm text-text-muted">
+          A API não respondeu. Verifique se o backend está rodando (terminal do{' '}
+          <code>server</code>).
+        </p>
+        {profileQuery.error && (
+          <p className="text-sm text-red-400 mt-2">Detalhe: {profileQuery.error.message}</p>
+        )}
+      </Card>
+    );
+  }
+
   const profile = profileQuery.data;
   const projects = projectsQuery.data ?? [];
   const publicUrl = `${window.location.origin}/u/${profile.username}`;
