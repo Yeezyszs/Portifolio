@@ -1,80 +1,117 @@
-# Portfólio
+# DevFolio — Plataforma de Portfólios
 
-Esqueleto de portfólio full-stack. Frontend em **React + Vite + Tailwind v4**
-(minimalista/clean) e backend em **Node + Express** seguindo **Clean Architecture**.
+Plataforma full-stack onde **vários programadores** se cadastram, montam seu
+portfólio e o publicam em `/u/:username`. Frontend em **React + Vite + Tailwind v4**
+(minimalista/clean) e backend em **Node + Express** seguindo **Clean Architecture**,
+com **Supabase** para banco de dados, autenticação e storage.
 
 ```
 portfolio/
-├── client/   → React + Vite + Tailwind (a vitrine)
-└── server/   → Node + Express + Clean Architecture (a API de contato)
+├── client/   → React + Vite + Tailwind (a vitrine + dashboard)
+└── server/   → Node + Express + Clean Architecture (a API)
 ```
+
+## Como funciona
+
+- **Cadastro/login** via Supabase Auth — cada dev tem uma conta.
+- **Dashboard privado** (`/dashboard`) para gerenciar projetos, skills e perfil.
+- **Portfólio público** em `/u/:username` listando os projetos publicados.
+- Um trigger no banco cria o perfil automaticamente quando o usuário se cadastra.
 
 ## Rodando localmente
 
-Abra dois terminais.
+### 0. Supabase
 
-**1. Backend**
+Crie um projeto em [supabase.com](https://supabase.com) e, no **SQL Editor**,
+rode as migrations em ordem:
+
+```
+server/supabase/migrations/0001_initial_schema.sql   # tabelas, RLS, triggers
+server/supabase/migrations/0002_storage_buckets.sql  # buckets de imagens
+server/supabase/migrations/0003_seed_tags.sql        # catálogo de tags
+```
+
+Pegue as chaves em **Project Settings > API**:
+- `URL` e `service_role key` → backend
+- `URL` e `anon key` → frontend
+
+### 1. Backend
+
 ```bash
 cd server
 npm install
-cp .env.example .env
-npm run dev          # sobe em http://localhost:3333
+cp .env.example .env     # preencha SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY
+npm run dev              # sobe em http://localhost:3333
 ```
 
-**2. Frontend**
+### 2. Frontend
+
 ```bash
 cd client
 npm install
-cp .env.example .env
-npm run dev          # sobe em http://localhost:5173
+cp .env.example .env     # preencha VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, VITE_API_URL
+npm run dev              # sobe em http://localhost:5173
 ```
 
-Abra `http://localhost:5173`. O formulário de contato chama a API e ela loga a
-mensagem no terminal do backend.
+Abra `http://localhost:5173`, crie sua conta, adicione projetos no dashboard e
+veja seu portfólio em `http://localhost:5173/u/seu-username`.
 
 ## Onde editar o quê
 
 | Quero mudar...            | Arquivo                                  |
 |---------------------------|------------------------------------------|
-| Meus projetos             | `client/src/data/projects.js`            |
-| Minhas skills             | `client/src/data/skills.js`              |
-| Textos do "Sobre"/Hero    | `client/src/sections/About.jsx` / `Hero.jsx` |
 | Cores / fontes            | `client/src/index.css` (bloco `@theme`)  |
-| Regras de validação       | `server/src/domain/entities/ContactMessage.js` |
+| Textos da landing         | `client/src/pages/LandingPage.jsx`       |
+| Catálogo de tags          | `server/supabase/migrations/0003_seed_tags.sql` |
+| Regras de validação       | `server/src/domain/entities/*.js`        |
+| Schema / RLS do banco     | `server/supabase/migrations/*.sql`       |
 
 ## Backend — as 4 camadas (Clean Architecture)
 
 ```
 server/src/
-├── domain/          → entidades + regras de negócio puras (não conhece nada externo)
-├── application/     → use cases, DTOs e contratos (interfaces)
-├── presentation/    → controllers e rotas (traduz HTTP <-> aplicação)
-├── infrastructure/  → implementações concretas (repo, notificação, config)
+├── domain/          → entidades + regras puras (Profile, Project, Skill)
+├── application/     → use cases e contratos (IProjectRepository, etc.)
+├── presentation/    → controllers, rotas, middlewares (auth, erros)
+├── infrastructure/  → implementações Supabase (repositórios, client)
 ├── app.js           → Composition Root (injeção de dependência)
 └── server.js        → ponto de entrada
 ```
 
-**A ideia central:** o use case depende de *contratos* (`IMessageRepository`,
-`INotificationService`), nunca de implementações. Hoje a mensagem é guardada em
-memória e logada no console; trocar por **Supabase + e-mail** é só criar uma classe
-nova que respeite o contrato e mudar **uma linha** no `app.js`. O resto não se mexe.
+**A ideia central:** o use case depende de *contratos* (`IProjectRepository`,
+`IProfileRepository`...), nunca de implementações. Hoje os dados vivem no
+**Supabase**; trocar por outro banco é criar classes novas que respeitem o
+contrato e mudar **uma seção** do `app.js`. O resto não se mexe.
 
 ```bash
-cd server && npm test   # testa o use case sem Express e sem banco
+cd server && npm test   # testa os use cases sem Express e sem banco
+```
+
+### Endpoints
+
+```
+# Públicos
+GET  /api/tags
+GET  /api/users/:username
+GET  /api/users/:username/projects/:slug
+
+# Privados (Authorization: Bearer <jwt do Supabase>)
+GET  /api/me              PUT /api/me
+GET  /api/me/projects     POST /api/me/projects
+PUT  /api/me/projects/:id DELETE /api/me/projects/:id
+PUT  /api/me/projects/reorder
+PUT  /api/me/skills
 ```
 
 ## Deploy
 
-- **Frontend** → Vercel ou Netlify (detecta Vite na hora). Configure a env var
-  `VITE_API_URL` apontando pra URL pública da API.
-- **Backend** → Vercel/Netlify são ótimos pro front estático, mas um Express de
-  longa duração roda melhor em **Render**, **Railway** ou **Fly.io** (free tiers).
-  Alternativa: adaptar o `app.js` como *serverless function* na própria Vercel.
-  Não esqueça de ajustar `CORS_ORIGIN` no backend pro domínio do front.
+- **Frontend** → Vercel ou Netlify (detecta Vite na hora). Configure
+  `VITE_API_URL`, `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY`.
+- **Backend** → **Render**, **Railway** ou **Fly.io** (free tiers). Configure
+  `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` e `CORS_ORIGIN` (domínio do front).
 
 ## Próximos passos (ideias)
 
-- Mover os projetos pra um endpoint `GET /api/projects` (vira um 2º use case e
-  mostra ainda mais o full-stack).
-- `SupabaseMessageRepository` no lugar do `InMemory`.
-- Modo escuro, página de detalhe por projeto, animações com Motion.
+- Upload de avatar/capa direto pro Supabase Storage (buckets já configurados).
+- Drag-and-drop para reordenar projetos (endpoint `reorder` já existe).
+- Markdown na descrição longa, modo claro/escuro, página de descoberta de devs.
