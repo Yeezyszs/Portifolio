@@ -1,4 +1,4 @@
-# Portfólio — Pedro
+# Portfólio
 
 Esqueleto de portfólio full-stack. Frontend em **React + Vite + Tailwind v4**
 (minimalista/clean) e backend em **Node + Express** seguindo **Clean Architecture**.
